@@ -66,17 +66,18 @@ public class Grid : MonoBehaviour
         List<Vector2Int> nodes = new List<Vector2Int>();
         for (int x = current.x - 1; x <= current.x + 1; ++x)
             for (int y = current.y - 1; y <= current.y + 1; ++y)
-                if (x >= 0 && y >= 0 && x < grid.GetLength(0) && y < grid.GetLength(1) && (x != current.x || y != current.y))
+                if (
+                    x >= 0
+                    && y >= 0
+                    && x < grid.GetLength(0)
+                    && y < grid.GetLength(1)
+                    && (x != current.x || y != current.y)
+                    )
                     nodes.Add(new Vector2Int(x, y));
                 return nodes;
     }
 
-    /// <summary>
-    /// Вычисление "кратчайшего" между двумя вершинами сетки
-    /// </summary>
-    /// <param name="startNode">Координаты начального узла пути (индексы элемента в массиве grid)</param>
-    /// <param name="finishNode">Координаты конечного узла пути (индексы элемента в массиве grid)</param>
-    void calculatePath(Vector2Int startNode, Vector2Int finishNode)
+    private void setupGrid()
     {
         //  Очищаем все узлы - сбрасываем отметку родителя, снимаем подсветку
         foreach (var node in grid)
@@ -84,6 +85,16 @@ public class Grid : MonoBehaviour
             node.Fade();
             node.ParentNode = null;
         }
+    }
+    
+    /// <summary>
+    /// Вычисление "кратчайшего" между двумя вершинами сетки
+    /// </summary>
+    /// <param name="startNode">Координаты начального узла пути (индексы элемента в массиве grid)</param>
+    /// <param name="finishNode">Координаты конечного узла пути (индексы элемента в массиве grid)</param>
+    void SamplePathfinder(Vector2Int startNode, Vector2Int finishNode)
+    {
+        setupGrid();
         
         //  На данный момент вызов этого метода не нужен, там только устанавливается проходимость вершины. Можно добавить обработку препятствий
         CheckWalkableNodes();
@@ -115,6 +126,60 @@ public class Grid : MonoBehaviour
                     nodes.Enqueue(node);
                 }
         }
+        IlluminatePath(finishNode);
+    }
+    void AStarPathfinder(
+        Vector2Int start,
+        Vector2Int finish
+        )
+    {
+        setupGrid();
+        
+        //  На данный момент вызов этого метода не нужен, там только устанавливается проходимость вершины. Можно добавить обработку препятствий
+        CheckWalkableNodes();
+        
+        PathNode startNode = grid[start.x, start.y];
+        PathNode finishNode = grid[finish.x, finish.y];
+
+        //  Начальную вершину отдельно изменяем
+        startNode.ParentNode = null;
+        startNode.Distance = 0;
+        
+        //  Очередь вершин в обработке
+        PriorityQueue<Vector2Int, float> openNodesQueue = new PriorityQueue<Vector2Int, float>(); // TElement, TPriority
+        openNodesQueue.Enqueue(start, 0);
+        
+        //  Пока не обработаны все вершины (очередь содержит узлы для обработки)
+        while(openNodesQueue.Count > 0)
+        {
+            Vector2Int currentGridItem = openNodesQueue.Dequeue();
+            PathNode current = grid[currentGridItem.x, currentGridItem.y];
+            //  Если достали целевую - можно заканчивать (это верно и для A*)
+            if (currentGridItem == finish) break;
+            
+            var neighbours = GetNeighbours(currentGridItem);
+            foreach (var node in neighbours)
+            {
+                var neighbor = grid[node.x, node.y];
+                
+                // g(n) cost of the path from the start node to n
+                var gNeighbor = current.Distance + PathNode.Dist(neighbor, current);
+                
+                if(neighbor.walkable && neighbor.Distance > gNeighbor) {
+                    neighbor.ParentNode = current;
+                    
+                    // h(n) is estimated cost of the cheapest path from n to the goal
+                    // f(n) = g(n) + h(n)
+                    var f = gNeighbor + PathNode.Dist(neighbor, finishNode);
+                    openNodesQueue.Enqueue(node, f);
+                }
+            }
+        }
+        IlluminatePath(finish);
+    }
+    
+    private void IlluminatePath(Vector2Int finishNode)
+    {
         //  Восстанавливаем путь от целевой к стартовой
         var pathElem = grid[finishNode.x, finishNode.y];
         while(pathElem != null)
@@ -123,7 +188,7 @@ public class Grid : MonoBehaviour
             pathElem = pathElem.ParentNode;
         }
     }
-
+    
     // Метод вызывается каждый кадр
     void Update()
     {
@@ -131,6 +196,7 @@ public class Grid : MonoBehaviour
         if (Time.frameCount < updateAtFrame) return;
         updateAtFrame = Time.frameCount + 1000;
 
-        calculatePath(new Vector2Int(0, 0), new Vector2Int(grid.GetLength(0)-1, grid.GetLength(1)-1));
+        // SamplePathfinder(new Vector2Int(0, 0), new Vector2Int(grid.GetLength(0)-1, grid.GetLength(1)-1));
+        AStarPathfinder(new Vector2Int(0, 0), new Vector2Int(grid.GetLength(0)-1, grid.GetLength(1)-1));
     }
 }
