@@ -23,22 +23,18 @@ public class Grid : MonoBehaviour
     {
         foreach (PathNode node in grid)
         {
+            /*
             //  Пока что считаем все вершины проходимыми, без учёта препятствий
             node.walkable = true;
-            /*node.walkable = !Physics.CheckSphere(node.body.transform.position, 1);
-            if (node.walkable)
-                node.Fade();
-            else
-            {
-                node.Illuminate();
-                Debug.Log("Not walkable!");
-            }*/
+            */
+            node.walkable = !Physics.CheckSphere(node.body.transform.position, 1);
+            if (node.walkable) node.Illuminate();
+            else node.Fade();
         }
     }
 
 
-    // Метод вызывается однократно перед отрисовкой первого кадра
-    void Start()
+    private void InitPathNodes()
     {
         //  Создаём сетку узлов для навигации - адаптивную, под размер ландшафта
         Vector3 terrainSize = landscape.terrainData.bounds.size;
@@ -55,6 +51,52 @@ public class Grid : MonoBehaviour
             grid[x, z].ParentNode = null;
             grid[x, z].Fade();
         }
+    }
+    
+    private void InitBoxes(
+        int boxesCount,
+        Vector2 widthBounds ,
+        Vector2 heightBounds,
+        Vector2 depthBounds 
+        )
+    {
+        Vector3 terrainSize = landscape.terrainData.bounds.size;
+        Vector3 terrainPosition =  landscape.transform.position;
+        
+        for (int i = 0; i < boxesCount; i++)
+        {
+            // Generate random position within the terrain bounds
+            Vector3 position = new Vector3(
+                Random.Range(terrainPosition.x, terrainPosition.x + terrainSize.x),
+                0, 
+                Random.Range(terrainPosition.z, terrainPosition.z + terrainSize.z)
+            );
+            position.y = landscape.SampleHeight(position) + 100;
+            
+            // Create the box at the random position with random size
+            GameObject box = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            box.transform.position = position;
+            box.transform.localScale = new Vector3(
+                Random.Range(widthBounds.x, widthBounds.y), 
+                Random.Range(heightBounds.x, heightBounds.y), 
+                Random.Range(depthBounds.x, depthBounds.y)
+            );
+            box.AddComponent<BoxCollider>();
+            Rigidbody rb = box.AddComponent<Rigidbody>();
+            rb.useGravity = true;
+        }
+    }
+    
+    // Метод вызывается однократно перед отрисовкой первого кадра
+    void Start()
+    {
+        InitPathNodes();
+        InitBoxes(
+            10,
+            new Vector2(50f, 150f),
+            new Vector2(20f, 60f),
+            new Vector2(50f, 150f)
+            );
     }
 
     /// <summary>
@@ -78,7 +120,7 @@ public class Grid : MonoBehaviour
         return nodes;
     }
 
-    private void setupGrid()
+    private void SetupGrid()
     {
         //  Очищаем все узлы - сбрасываем отметку родителя, снимаем подсветку
         foreach (var node in grid)
@@ -98,7 +140,7 @@ public class Grid : MonoBehaviour
     /// <param name="finishNode">Координаты конечного узла пути (индексы элемента в массиве grid)</param>
     void SamplePathfinder(Vector2Int startNode, Vector2Int finishNode)
     {
-        setupGrid();
+        SetupGrid();
 
         //  Реализуется аналог волнового алгоритма, причём найденный путь не будет являться оптимальным 
 
@@ -138,7 +180,7 @@ public class Grid : MonoBehaviour
             }
         }
 
-        IlluminatePath(finishNode);
+        HighlightPath(finishNode);
     }
 
     public delegate float DistanceMetric(PathNode from, PathNode to);
@@ -150,7 +192,7 @@ public class Grid : MonoBehaviour
         DistanceMetric getHScore
     )
     {
-        setupGrid();
+        SetupGrid();
         
         // For node n, gScore[n] is the cost of the cheapest path from start to n currently known.
         Dictionary<PathNode, float> gScore = new Dictionary<PathNode, float>();
@@ -214,7 +256,7 @@ public class Grid : MonoBehaviour
             }
         }
 
-        IlluminatePath(finish);
+        HighlightPath(finish);
     }
 
     void DijkstraPathfinder(
@@ -231,13 +273,13 @@ public class Grid : MonoBehaviour
         );
     }
 
-    private void IlluminatePath(Vector2Int finishNode)
+    private void HighlightPath(Vector2Int finishNode)
     {
         //  Восстанавливаем путь от целевой к стартовой
         var pathElem = grid[finishNode.x, finishNode.y];
         while (pathElem != null)
         {
-            pathElem.Illuminate();
+            pathElem.Highlight();
             pathElem = pathElem.ParentNode;
         }
     }
@@ -250,15 +292,16 @@ public class Grid : MonoBehaviour
         updateAtFrame = Time.frameCount + 1000;
 
         // SamplePathfinder(new Vector2Int(0, 0), new Vector2Int(grid.GetLength(0)-1, grid.GetLength(1)-1));
-        AStarPathfinder(
+        /*AStarPathfinder(
             new Vector2Int(0, 0), 
             new Vector2Int(grid.GetLength(0) - 1, grid.GetLength(1) - 1),
             PathNode.HeightPenaltyDist,
             PathNode.HeightPenaltyDist
-        );
-        /*DijkstraPathfinder(
-            new Vector2Int(0, 0), 
-            new Vector2Int(grid.GetLength(0) - 1, grid.GetLength(1) - 1)
         );*/
+        DijkstraPathfinder(
+            new Vector2Int(0, 0), 
+            new Vector2Int(grid.GetLength(0) - 1, grid.GetLength(1) - 1),
+            PathNode.HeightPenaltyDist
+        );
     }
 }

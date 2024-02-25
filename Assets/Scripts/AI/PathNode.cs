@@ -68,6 +68,7 @@ public class PathNode //: MonoBehaviour
     /// </summary>
     /// <param name="a"></param>
     /// <param name="b"></param>
+    /// <param name="heightMultiplier">height delta mutiplier</param>
     /// <returns></returns>
     public static float HeightPenaltyDist(PathNode a, PathNode b)
     {
@@ -79,11 +80,11 @@ public class PathNode //: MonoBehaviour
     /// </summary>
     /// <param name="a"></param>
     /// <param name="b"></param>
-    /// <param name="weight">height delta mutiplier</param>
+    /// <param name="heightMultiplier">height delta mutiplier</param>
     /// <returns></returns>
-    public static float HeightPenalty(PathNode a, PathNode b, float weight = HeightDeltaWeight)
+    public static float HeightPenalty(PathNode a, PathNode b, float heightMultiplier = HeightDeltaWeight)
     {
-        return weight * Mathf.Abs(a.body.transform.position.y - b.body.transform.position.y);
+        return heightMultiplier * Mathf.Abs(a.body.transform.position.y - b.body.transform.position.y);
     }
     
     /// <summary>
@@ -102,6 +103,14 @@ public class PathNode //: MonoBehaviour
     /// </summary>
     public void Illuminate()
     {
+        body.GetComponent<Renderer>().material.color = Color.blue;
+    }
+    
+    /// <summary>
+    /// Подсветить вершину - перекрасить в зеленый
+    /// </summary>
+    public void Highlight()
+    {
         body.GetComponent<Renderer>().material.color = Color.green;
     }
     
@@ -110,6 +119,6 @@ public class PathNode //: MonoBehaviour
     /// </summary>
     public void Fade()
     {
-        body.GetComponent<Renderer>().material.color = Color.blue;
+        body.GetComponent<Renderer>().material.color = Color.gray;
     }
 }
