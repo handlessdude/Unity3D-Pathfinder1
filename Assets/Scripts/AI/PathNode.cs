@@ -20,15 +20,15 @@ public class PathNode //: MonoBehaviour
         set => SetParent(value);
     }
 
-    private float distance = float.PositiveInfinity;  //  расстояние от начальной вершины
+    private float _distanceToStart = float.PositiveInfinity;  //  расстояние от начальной вершины
 
     /// <summary>
     /// Расстояние от начальной вершины до текущей (+infinity если ещё не развёртывали)
     /// </summary>
-    public float Distance
+    public float DistanceToStart
     {
-        get => distance;
-        set => distance = value;
+        get => _distanceToStart;
+        set => _distanceToStart = value;
     }
 
     /// <summary>
@@ -40,10 +40,12 @@ public class PathNode //: MonoBehaviour
         //  Указываем родителя
         parentNode = parent;
         //  Вычисляем расстояние
-        if (parent != null)
-            distance = parent.Distance + Vector3.Distance(body.transform.position, parent.body.transform.position);
-        else
-            distance = float.PositiveInfinity;
+        if (parent == null)
+        {
+            _distanceToStart = float.PositiveInfinity;
+            return;
+        }
+        _distanceToStart = parent.DistanceToStart + Vector3.Distance(body.transform.position, parent.body.transform.position);
     }
 
     /// <summary>
@@ -60,23 +62,47 @@ public class PathNode //: MonoBehaviour
         body = GameObject.Instantiate(objPrefab, worldPosition, Quaternion.identity);
     }
 
+    private const float HeightDeltaWeight = 40;
     /// <summary>
-    /// Расстояние между вершинами - разброс по высоте учитывается дополнительно
+    /// Расстояние между вершинами с учетом разброса по высоте
     /// </summary>
     /// <param name="a"></param>
     /// <param name="b"></param>
     /// <returns></returns>
-    public static float Dist(PathNode a, PathNode b)
+    public static float HeightPenaltyDist(PathNode a, PathNode b)
     {
-        return Vector3.Distance(a.body.transform.position, b.body.transform.position) + 40 * Mathf.Abs(a.body.transform.position.y - b.body.transform.position.y);
+        return EuclideanDist(a,  b) + HeightPenalty(a, b);
     }
     
     /// <summary>
-    /// Подсветить вершину - перекрасить в красный
+    /// Разница высот двух вершин
+    /// </summary>
+    /// <param name="a"></param>
+    /// <param name="b"></param>
+    /// <param name="weight">height delta mutiplier</param>
+    /// <returns></returns>
+    public static float HeightPenalty(PathNode a, PathNode b, float weight = HeightDeltaWeight)
+    {
+        return weight * Mathf.Abs(a.body.transform.position.y - b.body.transform.position.y);
+    }
+    
+    /// <summary>
+    /// Евклидово Расстояние между вершинами
+    /// </summary>
+    /// <param name="a"></param>
+    /// <param name="b"></param>
+    /// <returns></returns>
+    public static float EuclideanDist(PathNode a, PathNode b)
+    {
+        return Vector3.Distance(a.body.transform.position, b.body.transform.position);
+    }
+    
+    /// <summary>
+    /// Подсветить вершину - перекрасить в зеленый
     /// </summary>
     public void Illuminate()
     {
-        body.GetComponent<Renderer>().material.color = Color.red;
+        body.GetComponent<Renderer>().material.color = Color.green;
     }
     
     /// <summary>
